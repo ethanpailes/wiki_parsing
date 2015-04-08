@@ -14,7 +14,7 @@ OUT_FILE = "settlement_articles.txt"
 PAGES_TO_STORE = 10000
 PAGE_BEGIN_REGEX = re.compile(".*<page>.*")
 PAGE_END_REGEX = re.compile(".*</page>.*")
-IS_INTERESTING_REGEX = re.compile(".*Infobox settlement.*")
+IS_INTERESTING_REGEX = re.compile(".*Infobox\s+settlement.*")
 
 
 """
