@@ -21,13 +21,53 @@ COORD_REGEX = re.compile(".*Coord.*") #TODO delete and rename the new one
 COORD_REGEX_SUBS = re.compile("{{Coord\|[0-9].*\|.*}}")
 NUMBER_REGEX = re.compile("[0-9]")
 
+COORD_KEYS = [ "latd", "latm", "latNS", "longd", "longm", "longEW"]
+
 
 """
                             CLASSES
 """
 
 class Coordinates(object):
-    def __init__(self, coord_str):
+    valid = False
+    def __init__(self, coord_str, by_keys):
+        if by_keys:
+            self.__init_from_keys(coord_str)
+        else:
+            self.__init_from_coord_tag(coord_str)
+
+    def __init_from_keys(self, coord_str):
+        pairings = coord_str.split("|")
+        pairings = [p.split("=") for p in pairings]
+        pairings = [p for p in pairings if len(p) == 2]
+        d = {}
+        for k, v in pairings:
+            d[k.strip()] = v.strip()
+
+        try:
+            latd = float(d["latd"])
+            latm = float(d["latm"])
+            latNS = d["latNS"]
+            latitude = latd + (latm * (1.0/60.0))
+            if latNS == "S":
+                latitude = -latitude
+
+            longd = float(d["longd"])
+            longm = float(d["longm"])
+            longEW = d["longEW"]
+            longitude = longd + (longm * (1.0/60.0))
+            if longEW == "W":
+                longitude = -longitude
+
+            print(latitude, longitude)
+            self.coord_str = "{}\t{}".format(latitude, longitude)
+            self.valid = True
+        except ValueError: # if casting fails
+            pass
+        except KeyError: # if a key is not present
+            pass
+
+    def __init_from_coord_tag(self, coord_str):
         self.raw_str = coord_str
         cord_mentions = COORD_REGEX_SUBS.findall(coord_str)
         assert(len(cord_mentions) >= 1)
@@ -35,31 +75,32 @@ class Coordinates(object):
 
         coord_arr = coord_tag.split("|")
         coord_arr = [x for x in coord_arr if self.__is_cordinate_info(x)]
-        print(len(coord_arr))
 
         self.coord_str = {2: self.__numerical_form,
                           4: self.__directional_form,
                           6: self.__directional_form_minutes,
                           8: self.__directional_form_minutes_seconds
                           }[len(coord_arr)](coord_arr)
-
+        self.valid = True
 
     def __numerical_form(self, coord_arr):
         return "\t".join(coord_arr)
 
-    def __directional_form(self, coord_arr):
-        print("PING")
+    def __directional_form(self, coord_arr): #TODO still wonkey
         assert(coord_arr[1] in ["N", "S"] and coord_arr[3] in ["E", "W"])
         longitude = coord_arr[0]
         latitude = coord_arr[2]
         if coord_arr[1] == "S":
             longitude = "-" + longitude
-        if coord_arr[3] == "E":
+        if coord_arr[3] == "W":
             longitude = "-" + latitude
         return "\t".join([longitude, latitude])
 
     def __directional_form_minutes(self, coord_arr):
-        pass
+        assert(coord_arr[2] in ["N", "S"] and coord_arr[5] in ["E", "W"])
+        longitude = coord_arr[0]
+        longitude_min = coord_arr[1]
+
     def __directional_form_minutes_seconds(self, coord_arr):
         pass
 
@@ -83,58 +124,32 @@ class Page(object):
             if appending:
                 self.lines.append(line)
             if PAGE_END_REGEX.match(line):
-                self.coord_str = self.__fetch_coordinates()
-                print(self.coord_str)
+                # self.coord_str = self.__fetch_coordinates()
+                self.coords = self.__fetch_coordinates_bykeys()
                 return
             if line == "":
                 self.eof = True
-                self.coord_str = self.__fetch_coordinates()
+                # self.coord_str = self.__fetch_coordinates()
+                self.coords = self.__fetch_coordinates_bykeys()
                 return
 
-    
     def __fetch_coordinates(self):
         for line in self.lines:
             if COORD_LINE_REGEX.match(line):
-                return Coordinates(line).coord_str
+                return Coordinates(line, False)
 
-        """
-        try:
-            for i in range(len(cord_arr)):
-                if COORD_REGEX.match(cord_arr[i]):
-                    print("PING")
-                    longitude = cord_arr[i+1]
-                    float(longitude)
-
-                    longitude_dir = cord_arr[i+2]
-                    if (longitude_dir == "N" or longitude_dir == "S"):
-                        if longitude_dir == "S":
-                            longitude = "-" + longitude
-                    else:
-                        float(longitude_dir)
-                        latitude = longitude_dir
-                        return "{}\t{}\n".format(longitude, latitude)
-
-
-                    latitude = cord_arr[i+3]
-                    float(latitude)
-
-                    latitude_dir = cord_arr[i+4]
-                    assert(latitude_dir == "E" or latitude_dir == "W")
-                    if latitude_dir == "E":
-                        latitude_dir = "-" + latitude_dir
-
-                    return "{}\t{}\n".format(longitude, latitude)
-        except IndexError:
-            return None
-        except AssertionError:
-            return None
-        except ValueError:
-            return None
-        """
+    def __fetch_coordinates_bykeys(self):
+        coordinate_string = ""
+        for line in self.lines:
+            for key in COORD_KEYS:
+                if key in line:
+                    coordinate_string += line
+        if len(coordinate_string) > 0:
+            return Coordinates(coordinate_string, True)
 
     def write_coords_to_file(self, outfilehandle):
-        if self.coord_str != None:
-            outfilehandle.write(self.coord_str)
+        if self.coords != None and self.coords.valid:
+            outfilehandle.write(self.coords.coord_str)
 
     def hit_eof(self):
         return self.eof
@@ -160,8 +175,6 @@ def main():
             pages = []
     for x in pages:
         x.write_coords_to_file(output_file)
-
-
 
 if __name__ == "__main__":
     main()
