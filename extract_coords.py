@@ -5,23 +5,16 @@ Description: A script to pull coordinates from settlement data
 """
 
 import re
-import sys
 
 IN_FILE = "settlement_articles.txt"
-IN_FILE = "minis.txt"
+# IN_FILE = "minis.txt"
 OUT_FILE = "coordinates.txt"
 
 PAGES_TO_STORE = 10000
 PAGE_BEGIN_REGEX = re.compile(".*<page>.*")
 PAGE_END_REGEX = re.compile(".*</page>.*")
 
-COORD_LINE_REGEX = re.compile(".*Coord\|[0-9]*\.[0-9]*\|.*")
-COORD_REGEX = re.compile(".*Coord.*") #TODO delete and rename the new one
-COORD_REGEX_SUBS = re.compile("{{Coord\|[0-9].*\|.*}}")
-NUMBER_REGEX = re.compile("[0-9]")
-
 COORD_KEYS = [ "latd", "latm", "latNS", "longd", "longm", "longEW"]
-
 
 """
                             CLASSES
@@ -29,13 +22,7 @@ COORD_KEYS = [ "latd", "latm", "latNS", "longd", "longm", "longEW"]
 
 class Coordinates(object):
     valid = False
-    def __init__(self, coord_str, by_keys):
-        if by_keys:
-            self.__init_from_keys(coord_str)
-        else:
-            self.__init_from_coord_tag(coord_str)
-
-    def __init_from_keys(self, coord_str):
+    def __init__(self, coord_str):
         pairings = coord_str.split("|")
         pairings = [p.split("=") for p in pairings]
         pairings = [p for p in pairings if len(p) == 2]
@@ -58,57 +45,13 @@ class Coordinates(object):
             if longEW == "W":
                 longitude = -longitude
 
-            print(latitude, longitude)
-            self.coord_str = "{}\t{}".format(latitude, longitude)
+            self.coord_str = "{}\t{}\n".format(latitude, longitude)
             self.valid = True
         except ValueError: # if casting fails
             pass
         except KeyError: # if a key is not present
             pass
 
-    def __init_from_coord_tag(self, coord_str):
-        self.raw_str = coord_str
-        cord_mentions = COORD_REGEX_SUBS.findall(coord_str)
-        assert(len(cord_mentions) >= 1)
-        coord_tag = cord_mentions[0]
-
-        coord_arr = coord_tag.split("|")
-        coord_arr = [x for x in coord_arr if self.__is_cordinate_info(x)]
-
-        self.coord_str = {2: self.__numerical_form,
-                          4: self.__directional_form,
-                          6: self.__directional_form_minutes,
-                          8: self.__directional_form_minutes_seconds
-                          }[len(coord_arr)](coord_arr)
-        self.valid = True
-
-    def __numerical_form(self, coord_arr):
-        return "\t".join(coord_arr)
-
-    def __directional_form(self, coord_arr): #TODO still wonkey
-        assert(coord_arr[1] in ["N", "S"] and coord_arr[3] in ["E", "W"])
-        longitude = coord_arr[0]
-        latitude = coord_arr[2]
-        if coord_arr[1] == "S":
-            longitude = "-" + longitude
-        if coord_arr[3] == "W":
-            longitude = "-" + latitude
-        return "\t".join([longitude, latitude])
-
-    def __directional_form_minutes(self, coord_arr):
-        assert(coord_arr[2] in ["N", "S"] and coord_arr[5] in ["E", "W"])
-        longitude = coord_arr[0]
-        longitude_min = coord_arr[1]
-
-    def __directional_form_minutes_seconds(self, coord_arr):
-        pass
-
-    def __is_cordinate_info(self, info):
-        if info in ["N", "S", "E", "W"]:
-            return True
-        if NUMBER_REGEX.match(info):
-            return True
-        return False
 
 class Page(object):
     def __init__(self, infilehandle):
@@ -123,19 +66,12 @@ class Page(object):
             if appending:
                 self.lines.append(line)
             if PAGE_END_REGEX.match(line):
-                # self.coord_str = self.__fetch_coordinates()
                 self.coords = self.__fetch_coordinates_bykeys()
                 return
             if line == "":
                 self.eof = True
-                # self.coord_str = self.__fetch_coordinates()
                 self.coords = self.__fetch_coordinates_bykeys()
                 return
-
-    def __fetch_coordinates(self):
-        for line in self.lines:
-            if COORD_LINE_REGEX.match(line):
-                return Coordinates(line, False)
 
     def __fetch_coordinates_bykeys(self):
         coordinate_string = ""
@@ -144,7 +80,7 @@ class Page(object):
                 if key in line:
                     coordinate_string += line
         if len(coordinate_string) > 0:
-            return Coordinates(coordinate_string, True)
+            return Coordinates(coordinate_string)
 
     def write_coords_to_file(self, outfilehandle):
         if self.coords != None and self.coords.valid:
@@ -161,7 +97,8 @@ def main():
     in_file = open(IN_FILE, "r")
     output_file = open(OUT_FILE, "w")
     pages = []
-    print("Processing")
+    flushes = 0
+    print("Processing.")
     while True:
         p = Page(in_file)
         if p.hit_eof():
@@ -170,7 +107,8 @@ def main():
         if len(pages) >= PAGES_TO_STORE:
             for x in pages:
                 x.write_coords_to_file(output_file)
-                sys.stdout.write(".")
+            flushes += 1
+            print("Processed " + str(flushes * PAGES_TO_STORE) + " records.")
             pages = []
     for x in pages:
         x.write_coords_to_file(output_file)
