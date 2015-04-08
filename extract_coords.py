@@ -1,8 +1,7 @@
 """
 Authors: Ethan Pailes, Abdisalan Mohamud, Ethan Kopit
-File: extract.py
-Description: A script to extract a certain class of articles from the base wiki
-corpus.
+File: extract_coords.py
+Description: A script to pull coordinates from settlement data
 """
 
 import re
