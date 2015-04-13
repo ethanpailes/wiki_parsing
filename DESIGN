@@ -1,9 +1,0 @@
-
-
-In order to reduce batch size first strip all intersting pages out of the core
-dataset:
-    - Load n pages into memory
-    - determinne if interesting
-        - write to file & purge current pages
-        - purge current pages
-        

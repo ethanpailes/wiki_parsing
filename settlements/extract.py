@@ -8,7 +8,7 @@ corpus.
 import re
 import sys
 
-CORPUS_FILE = "enwiki-20150304-pages-articles.xml"
+CORPUS_FILE = "../data/enwiki-20150304-pages-articles.xml"
 OUT_FILE = "settlement_articles.txt"
 
 PAGES_TO_STORE = 10000

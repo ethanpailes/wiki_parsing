@@ -9,8 +9,9 @@ library(data.table)
 
 ###############################################################################
 WIKI_HOME = "~/Documents/tufts/text_mining/wiki/"
-DATA_DIR = WIKI_HOME
-OUT_DIR = paste0(WIKI_HOME, "output/")
+SETTLEMENT_HOME = paste0(WIKI_HOME, "settlements/")
+DATA_DIR = paste0(WIKI_HOME, "data/")
+OUT_DIR = paste0(SETTLEMENT_HOME, "output/")
 
 XLIM = c(-150, 150)
 YLIM = c(-70, 70)
@@ -27,7 +28,7 @@ land = "grey"
 water = "grey80"
 bgColor = "grey80"
 
-locs = read.csv(paste0(DATA_DIR, "coordinates.txt"),
+locs = read.csv(paste0(SETTLEMENT_HOME, "coordinates.txt"),
                    stringsAsFactors = F, header = F, sep = "\t")
 
 humanLocations = geom_point(data = locs, color = "red", alpha = .75, size = 1, aes(y = V1, x = V2))
