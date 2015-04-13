@@ -59,6 +59,7 @@ class Page(object):
 def main():
     corpus_file = open(CORPUS_FILE, "r")
     output_file = open(OUT_FILE, "w")
+    flushes = 0
     pages = []
     print("Processing")
     while True:
@@ -69,7 +70,8 @@ def main():
         if len(pages) >= PAGES_TO_STORE:
             for x in pages:
                 x.write_to_file_if_interesting(output_file)
-                sys.stdout.write(".")
+            flushes += 1
+            print("Processed " + str(flushes * PAGES_TO_STORE) + " records.")
             pages = []
     for x in pages:
         x.write_to_file_if_interesting(output_file)
