@@ -15,12 +15,13 @@ PAGES_TO_STORE = 10000
 PAGE_BEGIN_REGEX = re.compile(".*<page>.*")
 PAGE_END_REGEX = re.compile(".*</page>.*")
 
-WIKI_MARKUP_BLOCK_REGEX = re.compile("{{.*}}");
+WIKI_MARKUP_BLOCK_REGEX = re.compile("{{(.*)}}")
 
 INFOBOX_BEGIN_REGEX = re.compile("{{ *Infobox *[Uu]niversity")
 
-COORD_KEYS = [ "latd", "latm", "latNS", "longd", "longm", "longEW"]
+COORD_KEYS = [ "latd", "latm", "latNS", "longd", "longm", "longEW"] #TODO delete
 EST_KEYS = ["established"]
+COORDINATE_KEY = "coor"
 
 """
                             CLASSES
@@ -28,35 +29,15 @@ EST_KEYS = ["established"]
 
 class Coordinates(object):
     valid = False
-    def __init__(self, coord_str):
-        pairings = coord_str.split("|")
-        pairings = [p.split("=") for p in pairings]
-        pairings = [p for p in pairings if len(p) == 2]
-        d = {}
-        for k, v in pairings:
-            d[k.strip()] = v.strip()
-
-        try:
-            latd = float(d["latd"])
-            latm = float(d["latm"])
-            latNS = d["latNS"]
-            latitude = latd + (latm * (1.0/60.0))
-            if latNS == "S":
-                latitude = -latitude
-
-            longd = float(d["longd"])
-            longm = float(d["longm"])
-            longEW = d["longEW"]
-            longitude = longd + (longm * (1.0/60.0))
-            if longEW == "W":
-                longitude = -longitude
-
-            self.coord_str = "{}\t{}\n".format(latitude, longitude)
-            self.valid = True
-        except ValueError: # if casting fails
-            pass
-        except KeyError: # if a key is not present
-            pass
+    def __init__(self, info_lines):
+        raw_coords = None
+        for line in info_lines:
+            if COORDINATE_KEY in line:
+                try:
+                    raw_coords = WIKI_MARKUP_BLOCK_REGEX.search(line).group(1)
+                except AttributeError:
+                    pass
+                print(line, raw_coords)
 
 class University(object):
     def __init__(self, infilehandle):
@@ -83,7 +64,7 @@ class University(object):
         #i = Infobox(self.lines)
         self.__info_box_lines()
         self.__fetch_date_established()
-        self.coords = self.__fetch_coordinates_bykeys()
+        self.coords = Coordinates(self.info_lines)
 
     # Expects to be called after lines has been initialized.
     # Initializes the internal info_lines variable TODO
@@ -126,22 +107,12 @@ class University(object):
                 self.est = d[key]
                 return
 
-    def __fetch_coordinates_bykeys(self):
-        coordinate_string = ""
-        for line in self.lines:
-            for key in COORD_KEYS:
-                if key in line:
-                    coordinate_string += line
-        print(len(coordinate_string))
-        if len(coordinate_string) > 0:
-            return Coordinates(coordinate_string)
-
     def write_to_file(self, outfilehandle):
         data_str = self.est
         if self.coords != None and self.coords.valid:
             data_str += "\t{}".format(self.coords.coord_str)
             #outfilehandle.write(self.coords.coord_str)
-        print(data_str)
+        #print(data_str)
 
     def hit_eof(self):
         return self.eof
