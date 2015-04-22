@@ -83,7 +83,7 @@ class University(object):
         #i = Infobox(self.lines)
         self.__info_box_lines()
         self.__fetch_date_established()
-        # self.coords = self.__fetch_coordinates_bykeys()
+        self.coords = self.__fetch_coordinates_bykeys()
 
     # Expects to be called after lines has been initialized.
     # Initializes the internal info_lines variable TODO
@@ -132,13 +132,16 @@ class University(object):
             for key in COORD_KEYS:
                 if key in line:
                     coordinate_string += line
+        print(len(coordinate_string))
         if len(coordinate_string) > 0:
             return Coordinates(coordinate_string)
 
     def write_to_file(self, outfilehandle):
-        print(self.est)
-        #if self.coords != None and self.coords.valid:
-        #    outfilehandle.write(self.coords.coord_str)
+        data_str = self.est
+        if self.coords != None and self.coords.valid:
+            data_str += "\t{}".format(self.coords.coord_str)
+            #outfilehandle.write(self.coords.coord_str)
+        print(data_str)
 
     def hit_eof(self):
         return self.eof
