@@ -15,7 +15,9 @@ PAGES_TO_STORE = 10000
 PAGE_BEGIN_REGEX = re.compile(".*<page>.*")
 PAGE_END_REGEX = re.compile(".*</page>.*")
 
-INFOBOX_BEGIN_REGEX = re.compile("{{\s*Infobox")
+WIKI_MARKUP_BLOCK_REGEX = re.compile("{{.*}}");
+
+INFOBOX_BEGIN_REGEX = re.compile("{{ *Infobox *[Uu]niversity")
 
 COORD_KEYS = [ "latd", "latm", "latNS", "longd", "longm", "longEW"]
 EST_KEYS = ["established"]
@@ -56,36 +58,6 @@ class Coordinates(object):
         except KeyError: # if a key is not present
             pass
 
-class Infobox(object):
-    def __init__(self, lines):
-        curly_count = 0
-        appending = False
-        info_lines = []
-        for line in lines:
-            if INFOBOX_BEGIN_REGEX.match(line):
-                curly_count = 1
-                appending = True
-
-            curly_count += line.count("{{")
-            curly_count -= line.count("}}")
-
-            if appending:
-                info_lines.append(line)
-            if appending and curly_count <= 0:
-                break
-
-        pairs = "".join(info_lines).split("=")
-        pairs = [p.split("|") for p in pairs]
-        # [ ["...", "...", "k1"] ["v1a", "v1b", "k2"]
-        key = pairs[0][-1]
-        self.d = {}
-        for p in pairs:
-            value = "".join(p[:len(p)-1])
-            self.d[key.strip()] = value.strip()
-            key = p[-1]
-
-        print(json.dumps(self.d, indent=4))
-
 class University(object):
     def __init__(self, infilehandle):
         """ takes the main corpus file and consumes the first page it finds """
@@ -108,20 +80,40 @@ class University(object):
                 return
 
     def __setup(self):
-        i = Infobox(self.lines)
+        #i = Infobox(self.lines)
+        self.__info_box_lines()
         self.__fetch_date_established()
         # self.coords = self.__fetch_coordinates_bykeys()
 
-    def __fetch_date_established(self):
-        # pull lines containing established data
-        est_str = ""
+    # Expects to be called after lines has been initialized.
+    # Initializes the internal info_lines variable TODO
+    def __info_box_lines(self):
+        curly_count = 0
+        appending = False
+        self.info_lines = []
         for line in self.lines:
+            if INFOBOX_BEGIN_REGEX.search(line):
+                appending = True
+
+            if appending:
+                curly_count += line.count("{{")
+                curly_count -= line.count("}}")
+                self.info_lines.append(line)
+                if curly_count <= 0:
+                    break
+
+    # Expects to be called when the self.info_lines has been initialized
+    # initializes the date of the current page
+    def __fetch_date_established(self):
+        est_str = ""
+        for line in self.info_lines:
             for key in EST_KEYS:
                 if key in line:
                     est_str += line
 
         # build dictionary out of est string
-        pairs = est_str.split("|")
+        pairs = WIKI_MARKUP_BLOCK_REGEX.sub("", est_str)
+        pairs = pairs.split("|")
         pairs = [p.split("=") for p in pairs]
         pairs = [p for p in pairs if len(p) == 2]
         d = {}
@@ -144,7 +136,7 @@ class University(object):
             return Coordinates(coordinate_string)
 
     def write_to_file(self, outfilehandle):
-        pass
+        print(self.est)
         #if self.coords != None and self.coords.valid:
         #    outfilehandle.write(self.coords.coord_str)
 
@@ -174,9 +166,6 @@ def main():
             pages = []
     for x in pages:
         x.write_to_file(output_file)
-
-    for u in pages:
-        print(u.est)
 
 if __name__ == "__main__":
     main()
