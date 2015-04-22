@@ -23,12 +23,37 @@ COORD_KEYS = [ "latd", "latm", "latNS", "longd", "longm", "longEW"] #TODO delete
 EST_KEYS = ["established"]
 COORDINATE_KEY = "coor"
 
+COORDINATE_PARSING_SCHEMA = [
+    (re.compile(
+    "[Cc]oord\|[0-9]+\|[0-9]+\|[0-9]+\|[NS]\|[0-9]+\|[0-9]+\|[0-9]+\|[EW]\|"),
+        [
+            (None, lambda t, s: None),
+            ("lat", lambda t, s: float(s)),
+            ("lat", lambda t, s: t + (float(s) * (1.0/60.0))),
+            ("lat", lambda t, s: t + (float(s) * (1.0/3600.0))),
+            ("lat", lambda t, s: t if s == "N" else -t),
+
+            ("long", lambda t, s: float(s)),
+            ("long", lambda t, s: t + (float(s) * (1.0/60.0))),
+            ("long", lambda t, s: t + (float(s) * (1.0/3600.0))),
+            ("long", lambda t, s: t if s == "N" else -t)
+        ]),
+    # TODO add the two number one here
+    (re.compile("[Cc]oord\|[0-9.-]+\|[0-9.-]+\|"),
+        [
+            (None, lambda t, s: None),
+            ("lat", lambda t, s: float(s)),
+
+            ("long", lambda t, s: float(s))
+        ]),
+]
+
 """
                             CLASSES
 """
 
 class Coordinates(object):
-    valid = False
+    coord_str = None
     def __init__(self, info_lines):
         raw_coords = None
         for line in info_lines:
@@ -37,7 +62,18 @@ class Coordinates(object):
                     raw_coords = WIKI_MARKUP_BLOCK_REGEX.search(line).group(1)
                 except AttributeError:
                     pass
-                print(line, raw_coords)
+
+        targets = {"lat": None, "long": None}
+        if raw_coords != None:
+            for reg, parse_list in COORDINATE_PARSING_SCHEMA:
+                if reg.match(raw_coords):
+                    coord_list = raw_coords.split("|")
+                    for i, (tgt, F) in enumerate(parse_list):
+                        if tgt in targets:
+                            targets[tgt] = F(targets[tgt], coord_list[i])
+                    break
+        if targets["lat"] != None and targets["long"] != None:
+            self.coord_str = "{}\t{}".format(targets["lat"], targets["long"])
 
 class University(object):
     def __init__(self, infilehandle):
@@ -108,11 +144,12 @@ class University(object):
                 return
 
     def write_to_file(self, outfilehandle):
-        data_str = self.est
-        if self.coords != None and self.coords.valid:
-            data_str += "\t{}".format(self.coords.coord_str)
+        if (self.coords != None
+                    and self.coords.coord_str != None
+                    and self.est != None):
+            data_str = "{}\t{}".format(self.est, self.coords.coord_str)
+            print(data_str)
             #outfilehandle.write(self.coords.coord_str)
-        #print(data_str)
 
     def hit_eof(self):
         return self.eof
