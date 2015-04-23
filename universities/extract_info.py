@@ -38,7 +38,7 @@ COORDINATE_PARSING_SCHEMA = [
             ("long", lambda t, s: t + (float(s) * (1.0/3600.0))),
             ("long", lambda t, s: t if s == "N" else -t)
         ]),
-    # TODO add the two number one here
+    # TODO add the double-number form here
     (re.compile("[Cc]oord\|[0-9.-]+\|[0-9.-]+\|"),
         [
             (None, lambda t, s: None),
