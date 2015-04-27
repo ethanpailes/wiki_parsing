@@ -25,6 +25,9 @@ COORDINATE_KEY = "coor"
 YEAR_REGEX = re.compile("([0-9]{3,4})")
 
 
+
+#If as soon as a regex matches split the matching string, and apply the
+# corresponding operation list.
 COORDINATE_PARSING_SCHEMA = [
     (re.compile(
     "[Cc]oord\|[0-9]+\|[0-9]+\|[0-9]+\|[NS]\|[0-9]+\|[0-9]+\|[0-9]+\|[EW]\|"),
@@ -109,7 +112,6 @@ class University(object):
                 return
 
     def __setup(self):
-        #i = Infobox(self.lines)
         self.__info_box_lines()
         self.__fetch_date_established()
         self.coords = Coordinates(self.info_lines)
